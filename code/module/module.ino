@@ -42,6 +42,7 @@ void loop() {
   int temp;
 
   // CW방향 1바퀴 후
+  // step = 2048 한바퀴
   for(int i = 0 ; i < step ; i++)
   {
         temp = i % 4;
@@ -51,8 +52,23 @@ void loop() {
         digitalWrite(pinArray[3], bitRead(CW[temp], 3));
         stepDelay();
   }
-  
+
   delay(1000);
 
+  // CCW방향 1바퀴 후
+  // step = 2048 한바퀴
+  for(int i = 0 ; i < step ; i++)
+  {
+        temp = i % 4;
+        digitalWrite(pinArray[0], bitRead(CCW[temp], 0));
+        digitalWrite(pinArray[1], bitRead(CCW[temp], 1));
+        digitalWrite(pinArray[2], bitRead(CCW[temp], 2));
+        digitalWrite(pinArray[3], bitRead(CCW[temp], 3));
+        stepDelay();
+  }
+
+  delay(1000);
 }
+
+
 
