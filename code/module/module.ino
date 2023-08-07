@@ -39,11 +39,26 @@ void stepDelay()
 
 
 void loop() {  
+  
+
+  motor_cw(90);
+  motor_ccw(90);
+
+  
+}
+
+// 모터 정방향
+void motor_cw(int deg) {
   int temp;
+  int angle;
+
+  // 입력한 각도에 따른 펄스수
+  // step = 2048
+  angle = (step / 360) * deg;
 
   // CW방향 1바퀴 후
   // step = 2048 한바퀴
-  for(int i = 0 ; i < step ; i++)
+  for(int i = 0 ; i < angle ; i++)
   {
         temp = i % 4;
         digitalWrite(pinArray[0], bitRead(CW[temp], 0));
@@ -54,10 +69,20 @@ void loop() {
   }
 
   delay(1000);
+}
+
+void motor_ccw(int deg)
+{
+  int temp;
+  int angle;
+
+  // 입력한 각도에 따른 펄스수
+  // step = 2048
+  angle = (step / 360) * deg;
 
   // CCW방향 1바퀴 후
   // step = 2048 한바퀴
-  for(int i = 0 ; i < step ; i++)
+  for(int i = 0 ; i < angle ; i++)
   {
         temp = i % 4;
         digitalWrite(pinArray[0], bitRead(CCW[temp], 0));
@@ -69,6 +94,4 @@ void loop() {
 
   delay(1000);
 }
-
-
 
