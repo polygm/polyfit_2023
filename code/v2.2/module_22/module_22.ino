@@ -1,8 +1,16 @@
 // Polyfit version 2.2
+#include <Wire.h>
+#include "PinChangeInterrupt.h" // 라이브러리 추가 설치 필요
+
+
+
 #define BEEP_PIN 12 // 부저
 
 #define INTERRUPT0 2 // 인터럽트0
 #define INTERRUPT1 3 // 인터럽트1
+
+#define BUTTON1 8 // 외부버튼
+#define BUTTON2 9 // 외부버튼
 
 // 모터 연결핀
 #define MOTOR_PIN1 7 // IN1
@@ -82,8 +90,9 @@ void setup() {
   digitalWrite(BEEP_PIN, LOW);
   pinMode(BEEP_PIN, OUTPUT);
   
+  // 초기화 beep음
+  beep(100); beep(100); 
   
-  beep(); // 초기화 beep음 1초
 
   // 시리얼 초기화
   Serial.begin(115200);
@@ -98,11 +107,35 @@ void setup() {
 
   set_motor();
 
+  pinMode(BUTTON1,INPUT);
+  attachPCINT( digitalPinToPCINT(BUTTON1), button1_press, FALLING);
+  pinMode(BUTTON2,INPUT);
+  attachPCINT( digitalPinToPCINT(BUTTON2), button2_press, FALLING);
+
+
+  // i2c 설정
+  Wire.begin(1);
+  Wire.onReceive(receivedEvent);
+
 
   Serial.println("Module Ready");
+  Serial.println("m=move, d=max_distance, c=current_position");
+  Serial.println("------------------------------------------");
 
 }
 
+int button1_status = 0;
+int button2_status = 0;
+void button1_press() {
+  button1_status = 1;
+  Serial.print("b1=");
+  Serial.println(digitalRead(BUTTON1));
+}
+void button2_press() {
+  button2_status = 1;
+  Serial.print("b2=");
+  Serial.println(digitalRead(BUTTON2));
+}
 
 void set_motor()
 {
@@ -134,15 +167,17 @@ void set_motor()
   
 }
 
-void motor_move(int pos) {
+int motor_move(int pos) {
   int distance;
   int temp;
 
   if(pos >= 0) {
 
     distance = pos - motor_position; // 이동할 위치 계산
-    if(distance > motor_stop_max) {
+    if(pos > motor_stop_max) {
       Serial.println("Maximum position exceeded");
+      beep(2000);beep(300);beep(300);
+      return 0;
     }
 
     Serial.print("Move to = ");
@@ -186,8 +221,10 @@ void motor_move(int pos) {
 
   } else {
     Serial.println("The location cannot be determined.");
+    //beep(2000);beep(300);beep(300);
   }
 
+  return motor_position;
 }
 
 void motor_check_max() {
@@ -317,7 +354,34 @@ void builtin_led_blank(int time=1000) {
   delay(time);                      // wait for a second
 }
 
+/**
+ * I2C를 통하여 데이터 값을 전달 받음
+*/
+int received_pos = 0;
+void receivedEvent(int howmany) {
+  int x;
+  x = Wire.read();
+  Serial.print(x);
+  
+  // 숫자값 계산 확인
+  // 48->0, 57->9
+  if( x >= 48 && x <= 57) {
+    received_pos = received_pos * 10 + (x - 48);
+    Serial.print("position = ");
+    Serial.println(received_pos);
+  }
+
+  // m(109) 값 전달 받은 경우 이동
+  if(x == 109) {
+    //move = 1;
+    motor_move(received_pos);
+    received_pos = 0;
+  }
+
+}
+
 void loop() {
+  int btn1, btn2;
   // put your main code here, to run repeatedly:
   builtin_led_blank(500); // 0.5초 깜빡임
 
@@ -337,9 +401,57 @@ void loop() {
     }
   }
 
-  int cmd;
+
+  while(button1_status) {
+    btn1 = digitalRead(BUTTON1);
+    if(btn1 == 0) {
+      Serial.print(".");
+      motor_move(motor_position+5);
+      beep(150);
+    } else {
+      Serial.println("up");
+      button1_status = 0;
+    }
+  }
+
+  while(button2_status) {
+    btn2 = digitalRead(BUTTON2);
+    if(btn2 == 0) {
+      Serial.print(".");
+      motor_move(motor_position-5);
+      beep(200);
+    } else {
+      Serial.println("up");
+      button2_status = 0;
+    }
+  }
+
+  
+
+
+  char cmd;
   if(Serial.available()){
-    // cmd = Serial.read();
+    cmd = Serial.read();
+
+    if(cmd == 10) { 
+      // lf code (10)
+    } else if( cmd >= 48 && cmd <= 57) {
+      received_pos = received_pos * 10 + (cmd - 48);
+      //Serial.print("position = ");
+      //Serial.println(received_pos);
+      Serial.print(cmd);
+    } else if(cmd == 109) { // m(109) 값 전달 받은 경우 이동
+      motor_move(received_pos);
+      received_pos = 0;
+    } else if(cmd == 100) { // d
+      Serial.print("max distance = ");
+      Serial.println(motor_stop_max);
+    } else if(cmd == 99) { // c
+      Serial.print("current position = ");
+      Serial.println(motor_position);
+    }
+
+/*
     // isAlphaNumeric(thisChar)
     // isDigit(cmd)
 
@@ -354,8 +466,8 @@ void loop() {
 
     // lf (10)
     cmd = Serial.read(); //LF 코드 읽기
-
-
+    */
   }
   
 }
+
